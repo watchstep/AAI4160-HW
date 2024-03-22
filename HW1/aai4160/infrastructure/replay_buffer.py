@@ -120,7 +120,7 @@ class ReplayBuffer():
                 == self.terminals.shape[0]
         )
 
-        ## TODO return batch_size number of random entries\
+        ## TODO return batch_size number of random entries
         ## from each of the 5 component arrays above
         ## HINT 1: use np.random.choice to sample random indices. 
         ## Remember not to "replace" when sampling data
@@ -129,6 +129,9 @@ class ReplayBuffer():
         ## You would use same indices for all arrays.
         ## HINT 3: look at the sample_recent_data function below
         ## Note that rews, next_obs, and terminals are not used for BC
+        sample_indices = np.random.choice(np.arange())
+        
+        
 
         return TODO, TODO, TODO, TODO, TODO
 

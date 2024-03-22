@@ -206,7 +206,18 @@ class BCTrainer:
         # HINT3: you want each of these collected rollouts to be of length self.params['ep_len']
 
         print("\nCollecting data to be used for training...")
-        paths, envsteps_this_batch = TODO
+        if (itr == 0):
+            if (load_initial_expertdata):
+                with open(load_initial_expertdata, 'rb') as f:
+                    loaded_paths = pickle.load(f)
+                return loaded_paths, 0, None
+            else:
+                train_video_paths = collect_policy(self.params['batch_size_initial'])
+        else:
+            collect
+                
+            
+        paths, envsteps_this_batch = 
 
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
@@ -236,7 +247,7 @@ class BCTrainer:
             # TODO use the sampled data to train an agent
             # HINT3: use the agent's train function
             # HINT4: keep the agent's training log for debugging
-            train_log = TODO
+            train_log = TOD
             all_logs.append(train_log)
         return all_logs
 

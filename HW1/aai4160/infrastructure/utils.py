@@ -25,7 +25,7 @@ def sample_trajectory(env, policy, max_path_length, render=False):
     :render: whether to save images from the rollout
     """
     # initialize env for the beginning of a new rollout
-    ob = TODO # HINT: should be the output of resetting the env
+    ob = env.reset() # HINT: should be the output of resetting the env
 
     # init vars
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
@@ -42,7 +42,8 @@ def sample_trajectory(env, policy, max_path_length, render=False):
 
         # use the most recent ob to decide what to do
         obs.append(ob)
-        ac = TODO # HINT: query the policy's get_action function
+        # 수정 요망 obs? ob? 
+        ac = policy.get_action(ob) # HINT: query the policy's get_action function
         ac = ac[0]
         acs.append(ac)
 
@@ -76,8 +77,8 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
     timesteps_this_batch = 0
     paths = []
     while timesteps_this_batch < min_timesteps_per_batch:
-
-        TODO
+        paths.append()
+        timesteps_this_batch += get_pathlength(policy)
 
     return paths, timesteps_this_batch
 
