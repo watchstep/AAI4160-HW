@@ -6,6 +6,12 @@ Functions to edit:
     2. train_agent line(223)
     3. do_relabel_with_expert (line 243)
 """
+import os
+
+os.environ["MUJOCO_GL"] = "osmesa"
+os.environ["PYOPENGL_PLATFORM"] = "osmesa"
+os.environ["SDL_VIDEODRIVER"] = "dummy"
+os.getenv('MUJOCO_GL')
 
 from collections import OrderedDict
 
@@ -23,7 +29,6 @@ from aai4160.infrastructure import utils
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
 MAX_VIDEO_LEN = 40  # we overwrite this in the code below
-
 
 class BCTrainer:
     """
@@ -210,14 +215,11 @@ class BCTrainer:
             if (load_initial_expertdata):
                 with open(load_initial_expertdata, 'rb') as f:
                     loaded_paths = pickle.load(f)
-                return loaded_paths, 0, None
+                    return loaded_paths, 0, None
             else:
-                train_video_paths = collect_policy(self.params['batch_size_initial'])
-        else:
-            collect
-                
-            
-        paths, envsteps_this_batch = 
+                paths, envsteps_this_batch = utils.sample_trajectories(self.env, collect_policy, self.params['batch_size_initial'], self.params['ep_len'])
+        
+        paths, envsteps_this_batch = utils.sample_trajectories(self.env, collect_policy, self.params['batch_size'], self.params['ep_len'])
 
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
@@ -242,12 +244,12 @@ class BCTrainer:
             # TODO sample some data from the data buffer
             # HINT1: use the agent's sample function
             # HINT2: how much data = self.params['train_batch_size']
-            ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = TODO
+            ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
 
             # TODO use the sampled data to train an agent
             # HINT3: use the agent's train function
             # HINT4: keep the agent's training log for debugging
-            train_log = TOD
+            train_log = self.agent.train(ob_batch, ac_batch)
             all_logs.append(train_log)
         return all_logs
 
@@ -263,6 +265,8 @@ class BCTrainer:
         # TODO relabel collected obsevations (from our policy) with labels from an expert policy
         # HINT: query the policy (using the get_action function) with paths[i]["observation"]
         # and replace paths[i]["action"] with these expert labels
+        for path in paths:
+            path['action'] = expert_policy.get_action(path['observation'])
 
         return paths
 

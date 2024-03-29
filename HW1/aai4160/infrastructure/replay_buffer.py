@@ -129,11 +129,15 @@ class ReplayBuffer():
         ## You would use same indices for all arrays.
         ## HINT 3: look at the sample_recent_data function below
         ## Note that rews, next_obs, and terminals are not used for BC
-        sample_indices = np.random.choice(np.arange())
+        batch_idxs = np.random.choice(range(self.obs.shape[0]), size=batch_size, replace=False) # choice v.s permutation
+        # batch_idxs = random_idxs[-batch_size:] # np.random.choice(size=self.batch_size)
         
-        
-
-        return TODO, TODO, TODO, TODO, TODO
+        return (self.obs[batch_idxs],
+                self.acs[batch_idxs],
+                self.rews[batch_idxs],
+                self.next_obs[batch_idxs],
+                self.terminals[batch_idxs]
+            )
 
     def sample_recent_data(self, batch_size=1):
         """

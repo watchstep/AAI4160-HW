@@ -5,7 +5,7 @@ Functions to edit:
 
 
 from typing import Union
-
+from collections import OrderedDict
 import torch
 from torch import nn
 
@@ -19,6 +19,7 @@ _str_to_activation = {
     'sigmoid': nn.Sigmoid(),
     'selu': nn.SELU(),
     'softplus': nn.Softplus(),
+    'identity': nn.Identity(),
 }
 
 
@@ -56,12 +57,12 @@ def build_mlp(
     # https://pytorch.org/docs/stable/generated/torch.nn.Sequential.html
     # HINT 2: We are only using linear layers and activation layers.
     # HINT 3: You can simple create a list, append nn layers, and convert with nn.Sequential.
-        
-    layers = [('linear1', nn.Linear(input_size, size)), ('activation1', activation)]
-    for i in range(2, n_layers + 1):
-        layers.append((f'linear{i}', nn.Linear(size, size)))
-        layers.append((f'activation{i}', activation))
-    layers.extend([(f'linear{n_layers + 1}', nn.Linear(size, output_size)), (f'activation{n_layers+1}', output_activation)])
+    layers = [nn.Linear(input_size, size), activation]
+    for _ in range(n_layers):
+        layers.append(nn.Linear(size, size))
+        layers.append(activation)
+    layers.append(nn.Linear(size, output_size))
+    layers.append(output_activation)
     model = nn.Sequential(*layers)
     return model
 device = None

@@ -66,7 +66,9 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.learning_rate = learning_rate
         self.training = training
         self.nn_baseline = nn_baseline
-        self.criterion = nn.MSELoss() # nn.SmoothL1Loss()
+        # loss 후보  nn.SmoothL1Loss()
+        # cross entropy action discrete할 때 사용,
+        self.criterion = nn.MSELoss() 
 
         if self.discrete:
             self.logits_na = ptu.build_mlp(
@@ -149,12 +151,17 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # HINT 3: Think about how to convert logstd to regular std.
         if self.discrete:
             logits = self.logits_na(observation)
-            action_dist = distributions.categorical(logits)
+            action_dist = distributions.Categorical(logits)
         else:
             # 배치를 고려해야하나..?
+            # torhc.diag(torch.exp(self.logstd))
+            # batch_dim = batch_mean.shape[0]
+            # batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
+            # using scale_tril is more efficient, to represent the covariance
+            # you can take std as a bias > 0 in network ,so we need to take exp(), you could choose not to, results are the same
             mean = self.mean_net(observation)
-            std = torch.exp(self.logstd)
-            action_dist = distributions.multivariate_normal(mean, std)
+            std = torch.diag(torch.exp(self.logstd))
+            action_dist = distributions.MultivariateNormal(mean, std)
         return action_dist
             
 
@@ -176,7 +183,8 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.optimizer.zero_grad()
         pred_dist = self.forward(ptu.from_numpy(observations))
         pred_x = pred_dist.rsample()
-        x = actions.rsample()
+        x = ptu.from_numpy(actions)
+
         loss = self.criterion(pred_x, x)
         loss.backward()
         self.optimizer.step()

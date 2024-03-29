@@ -16,6 +16,7 @@ MJ_ENV_NAMES = ["Ant-v4", "Walker2d-v4", "HalfCheetah-v4", "Hopper-v4"]
 MJ_ENV_KWARGS = {name: {"render_mode": "rgb_array"} for name in MJ_ENV_NAMES}
 MJ_ENV_KWARGS["Ant-v4"]["use_contact_forces"] = True
 
+# bellman los
 def sample_trajectory(env, policy, max_path_length, render=False):
     """
     Rolls out a policy and generates a trajectories
@@ -57,7 +58,7 @@ def sample_trajectory(env, policy, max_path_length, render=False):
 
         # TODO end the rollout if the rollout ended
         # HINT: rollout can end due to done, or due to exceeding or reaching (>=) max_path_length
-        rollout_done = TODO # HINT: this is either 0 or 1
+        rollout_done = 1 if (done or steps >= max_path_length) else 0 # HINT: this is either 0 or 1
         terminals.append(rollout_done)
 
         if rollout_done:
@@ -77,8 +78,9 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
     timesteps_this_batch = 0
     paths = []
     while timesteps_this_batch < min_timesteps_per_batch:
-        paths.append()
-        timesteps_this_batch += get_pathlength(policy)
+        path = sample_trajectory(env, policy, max_path_length, render)
+        paths.append(path)
+        timesteps_this_batch += get_pathlength(path)
 
     return paths, timesteps_this_batch
 
@@ -89,10 +91,8 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
         TODO implement this function
         Hint1: use sample_trajectory to get each path (i.e. rollout) that goes into paths
     """
-    paths = []
-
-    TODO
-
+    paths = [sample_trajectory(env, policy, max_path_length, render) for _ in range(ntraj)]
+    
     return paths
 
 ############################################
