@@ -64,6 +64,7 @@ def run_bc(params):
         relabel_with_expert=params['do_dagger'],
         expert_policy=loaded_expert_policy,
     )
+    
 
 def main():
     """
@@ -72,11 +73,13 @@ def main():
        
     args = parse_args()
     
+    exp_date = time.strftime("%m-%d_%H-%M-%S")
     wandb.init(
-        name=f"exp_{args.exp_num}",
+        name=f"exp_{exp_date}",
         project="aai4160_hw1",
         tags=["BC"],
         sync_tensorboard=True,
+        group="Ant-v4-L1",
         config=args,
     )
 
@@ -117,3 +120,22 @@ def main():
     
 if __name__ == "__main__":
     main()
+    # sweep_config = {
+    # "method": "random",
+    # "name": f"sweep_1",
+    # "metric": {"goal": "maximize", "name": "Eval_AverageReturn"},
+    # "parameters": {
+    #     "num_agent_train_steps_per_iter": {"values": [1000, 1500, 2000, 25000, 3000]},
+    #     "batch_size": {"values":[1000, 1500, 2000, 25000, 3000]},
+    #     "train_batch_size": {"values": [100, 500, 1000]},
+    #     "n_layers":{"values": [2, 8, 16, 32, 64]},
+    #     "size":{"values": [16, 32, 64, 128, 256]},
+    #     "learning_rate":{"max": 1e-1, "min": 1e-4},
+    #     "criterion":{"values": ["MSE", "L1", "SmoothL1"]}
+    #     },
+    # }
+    
+    # sweep_id = wandb.sweep(sweep=sweep_config, project="aai4160_hw1")
+    # wandb.agent(sweep_id,
+	# 		function=main,
+    #         project='aai4160_hw1')
