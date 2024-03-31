@@ -7,6 +7,7 @@ Functions to edit:
     3. do_relabel_with_expert (line 243)
 """
 import os
+import wandb
 
 os.environ["MUJOCO_GL"] = "osmesa"
 os.environ["PYOPENGL_PLATFORM"] = "osmesa"
@@ -340,7 +341,6 @@ class BCTrainer:
             last_log = training_logs[-1]  # Only use the last log for now
             logs.update(last_log)
 
-
             if itr == 0:
                 self.initial_return = np.mean(train_returns)
             logs["Initial_DataCollection_AverageReturn"] = self.initial_return
@@ -350,5 +350,7 @@ class BCTrainer:
                 print('{} : {}'.format(key, value))
                 self.logger.log_scalar(value, key, itr)
             print('Done logging...\n\n')
+            
+            wandb.log(logs)
 
             self.logger.flush()

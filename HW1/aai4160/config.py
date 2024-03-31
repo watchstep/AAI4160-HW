@@ -12,4 +12,4 @@ sweep_configuration = {
     },
 }
 
-sweep_id = wandb.sweep(sweep=sweep_configuration, project="RL-HW1")
+sweep_id = wandb.sweep(sweep=sweep_configuration, project="aai4160_hw1")

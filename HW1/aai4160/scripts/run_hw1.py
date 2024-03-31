@@ -4,6 +4,7 @@ Hyperparameters for the experiment are defined in main()
 """
 
 import os
+import wandb
 import time
 import argparse
 
@@ -12,7 +13,16 @@ from aai4160.agents.bc_agent import BCAgent
 from aai4160.policies.loaded_gaussian_policy import LoadedGaussianPolicy
 from aai4160.infrastructure.utils import MJ_ENV_KWARGS, MJ_ENV_NAMES
 
+os.environ["WANDB_API_KEY"] = "0b727f9817c68e9ff062ee720759d799754c60a1"
 
+def init_wandb():
+    wandb.init(
+        name="exp_1",
+        project="aai4160_hw1",
+        tags=["BC"],
+        sync_tensorboard=True,
+    )
+    
 def run_bc(params):
     """
     Runs behavior cloning with the specified parameters
@@ -62,7 +72,6 @@ def run_bc(params):
         relabel_with_expert=params['do_dagger'],
         expert_policy=loaded_expert_policy,
     )
-
 
 def main():
     """
@@ -138,9 +147,10 @@ def main():
     params['logdir'] = logdir
     if not os.path.exists(logdir):
         os.makedirs(logdir)
-
+    
+    init_wandb()
     run_bc(params)
-
-
+    wandb.finish()
+    
 if __name__ == "__main__":
     main()
