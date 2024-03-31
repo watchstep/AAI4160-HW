@@ -1,5 +1,6 @@
 README.md
 setup.py
+aai4160/config.py
 aai4160.egg-info/PKG-INFO
 aai4160.egg-info/SOURCES.txt
 aai4160.egg-info/dependency_links.txt

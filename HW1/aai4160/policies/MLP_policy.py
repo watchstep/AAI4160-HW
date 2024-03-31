@@ -20,6 +20,7 @@ from torch import distributions
 
 from aai4160.infrastructure import pytorch_util as ptu
 from aai4160.policies.base_policy import BasePolicy
+from aai4160.config import parse_args
 
 
 class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
@@ -66,9 +67,15 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.learning_rate = learning_rate
         self.training = training
         self.nn_baseline = nn_baseline
-        # loss 후보  nn.SmoothL1Loss()
-        # cross entropy action discrete할 때 사용,
-        self.criterion = nn.MSELoss() 
+        
+        args = parse_args()
+        
+        if args.criterion == 'MSE':
+            self.criterion = nn.MSELoss()
+        elif args.criterion == "L1":
+            self.criterion = nn.L1Loss()
+        elif args.criterion == "SmoothL1":
+            self.criterion = nn.SmoothL1Loss()
 
         if self.discrete:
             self.logits_na = ptu.build_mlp(
