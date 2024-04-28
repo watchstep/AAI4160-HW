@@ -20,6 +20,7 @@ from torch import distributions
 
 from aai4160.infrastructure import pytorch_util as ptu
 from aai4160.policies.base_policy import BasePolicy
+from aai4160.config import parse_args
 
 
 class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
@@ -66,6 +67,15 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.learning_rate = learning_rate
         self.training = training
         self.nn_baseline = nn_baseline
+        
+        args = parse_args()
+        
+        if args.criterion == 'MSE':
+            self.criterion = nn.MSELoss()
+        elif args.criterion == "L1":
+            self.criterion = nn.L1Loss()
+        elif args.criterion == "SmoothL1":
+            self.criterion = nn.SmoothL1Loss()
 
         if self.discrete:
             self.logits_na = ptu.build_mlp(
@@ -124,7 +134,9 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # HINT 2: We would use self.forward function to get the distribution,
         # And we will sample actions from the distribution.
         # HINT 3: Return a numpy action, not torch tensor
-        raise NotImplementedError
+        dist = self.forward(ptu.from_numpy(observation))
+        action = ptu.to_numpy(dist.sample())
+        return action
 
 
     def forward(self, observation: torch.FloatTensor) -> Any:
@@ -133,7 +145,7 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
         :param observation: observation(s) to query the policy
         :return:
-            action: sampled action(s) from the policy
+            action_dist: sampled action(s) from the policy
         """
         # TODO: implement the forward pass of the network.
         # You can return anything you want, but you should be able to differentiate
@@ -144,7 +156,21 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # And design the function to return such a distribution object.
         # HINT 2: In self.get_action and self.update, we will sample from this distribution.
         # HINT 3: Think about how to convert logstd to regular std.
-        raise NotImplementedError
+        if self.discrete:
+            logits = self.logits_na(observation)
+            action_dist = distributions.Categorical(logits)
+        else:
+            # 배치를 고려해야하나..?
+            # torhc.diag(torch.exp(self.logstd))
+            # batch_dim = batch_mean.shape[0]
+            # batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
+            # using scale_tril is more efficient, to represent the covariance
+            # you can take std as a bias > 0 in network ,so we need to take exp(), you could choose not to, results are the same
+            mean = self.mean_net(observation)
+            std = torch.diag(torch.exp(self.logstd))
+            action_dist = distributions.MultivariateNormal(mean, std)
+        return action_dist
+            
 
     def update(self, observations, actions):
         """
@@ -161,7 +187,14 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # HINT 3: Think about what function to call to sample an action
         # with which we will compute gradient to optimize.
         # https://stackoverflow.com/questions/60533150/what-is-the-difference-between-sample-and-rsample
-        loss = TODO
+        self.optimizer.zero_grad()
+        pred_dist = self.forward(ptu.from_numpy(observations))
+        pred_x = pred_dist.rsample()
+        x = ptu.from_numpy(actions)
+
+        loss = self.criterion(pred_x, x)
+        loss.backward()
+        self.optimizer.step()
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),
