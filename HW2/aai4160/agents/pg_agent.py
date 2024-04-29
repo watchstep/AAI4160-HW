@@ -81,6 +81,7 @@ class PGAgent(nn.Module):
         # way. obs, actions, rewards, terminals, and q_values should all be arrays with a leading dimension of `batch_size`
         # beyond this point.
         # HINT: the sum of the lengths of all the arrays is `batch_size`.
+        batch_size = 
 
         # step 2: calculate advantages from Q values
         assert q_values.ndim == 1
@@ -170,14 +171,15 @@ class PGAgent(nn.Module):
 
         if self.critic is None:
             # TODO: if no baseline, then what are the advantages?
-            advantages = None
+            advantages = q_values
         else:
             # TODO: run the critic and use it as a baseline
-            values = None
+            obs = ptu.from_numpy(obs)
+            values = self.critic(obs).squeeze()
 
             if self.gae_lambda is None:
                 # TODO: if using a baseline, but not GAE, what are the advantages?
-                advantages = None
+                advantages = self._discounted_reward_to_go(rewards) - values
             else:
                 # TODO: implement GAE
                 batch_size = obs.shape[0]
@@ -224,7 +226,13 @@ class PGAgent(nn.Module):
         """
         assert rewards.ndim == 1
         # TODO: calculate discounted return using the above formula
-        ret = None
+        ret = np.zeros_like(rewards)
+        T = len(rewards)
+        
+        for t in range(T):
+            for t_prime in range(T):
+                # t_prime 왜 -1 안하지?
+                ret[t] += self.gamma ** t_prime * rewards[t_prime]
 
         assert rewards.shape == ret.shape
         return ret
@@ -249,8 +257,13 @@ class PGAgent(nn.Module):
         """
         assert rewards.ndim == 1
         # TODO: calculate discounted reward to go using the above formula
-        ret = None
-
+        ret = np.zeros_like(rewards)
+        T = len(rewards)
+        
+        for t in range(T):
+            for t_prime in range(t, T):
+                ret[t] += self.gamma ** (t_prime - t) * rewards[t_prime]
+                
         assert rewards.shape == ret.shape
         return ret
 
@@ -266,7 +279,10 @@ class PGAgent(nn.Module):
         assert obs.ndim == 2
         # TODO: calculate the log probabilities
         # HINT: self.actor outputs a distribution object, which has a method log_prob that takes in the actions
-        logp = None
+        obs = ptu.from_numpy(obs)
+        actions = ptu.from_numpy(obs)
+        dist = self(actions)
+        logp = dist.log_prob(dist)
 
         assert logp.ndim == 1 and logp.shape[0] == obs.shape[0]
         return logp
