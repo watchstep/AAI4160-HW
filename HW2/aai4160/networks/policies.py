@@ -72,7 +72,7 @@ class MLPPolicy(nn.Module):
             # TODO: define the forward pass for a policy with a discrete action space.
             # HINT: use torch.distributions.Categorical to define the distribution.
             logits = self.logits_net(obs)
-            dist = distributions.Categorical(logits)
+            dist = distributions.Categorical(F.softmax(logits))
         else:
             # TODO: define the forward pass for a policy with a continuous action space.
             # HINT: use torch.distributions.Normal to define the distribution.

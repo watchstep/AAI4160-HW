@@ -81,25 +81,31 @@ class PGAgent(nn.Module):
         # way. obs, actions, rewards, terminals, and q_values should all be arrays with a leading dimension of `batch_size`
         # beyond this point.
         # HINT: the sum of the lengths of all the arrays is `batch_size`.
-        batch_size = 
+        obs = np.concatenate(obs)
+        actions = np.concatenate(actions)
+        rewards = np.concatenate(rewards)
+        terminals = np.concatenate(terminals)
+        q_values = np.concatenate(q_values)
 
         # step 2: calculate advantages from Q values
         assert q_values.ndim == 1
-        advantages: np.ndarray = None
+        advantages: np.ndarray = self._estimate_advantage(obs, rewards, q_values, terminals)
 
         assert advantages.ndim == 1
         # step 3: use all datapoints (s_t, a_t, adv_t) to update the PG actor/policy
         if not self.use_ppo:
             # TODO: normalize the advantages to have a mean of zero and a standard deviation of one within the batch
             if self.normalize_advantages:
-                pass
+                mu = np.mean(advantages)
+                std = np.std(advantages)
+                advantages = (advantages - mu) / (std + 1e-8)
 
             # TODO: update the PG actor/policy network once using the advantages
-            info: dict = None
+            info: dict = self.actor.update(obs, actions, advantages)
 
             if self.critic is not None:
                 # TODO: update the critic for `baseline_gradient_steps` times
-                critic_info: dict = None
+                critic_info: dict = self.critic.update(obs, q_values)
 
                 info.update(critic_info)
         else:
@@ -125,15 +131,17 @@ class PGAgent(nn.Module):
 
                     # TODO: normalize `advantages_slice`` to have a mean of zero and a standard deviation of one within the batch
                     if self.normalize_advantages:
-                        pass
+                        mu = np.mean(advantages_slice)
+                        std = np.mean(advantages_slice)
+                        advantages_slice = (advantages_slice - mu) / (std + 1e-8)
 
                     # TODO: update the PG actor/policy with PPO objective
                     # HINT: call self.actor.ppo_update
-                    info: dict = None
+                    info: dict = self.actor.ppo_update(obs_slice, actions_slice, advantages_slice)
 
             assert self.critic is not None, "PPO requires a critic for calculating GAE."
             # TODO: update the critic for `baseline_gradient_steps` times
-            critic_info: dict = None
+            critic_info: dict = self.critic.update(obs, q_values)
 
             info.update(critic_info)
         return info
@@ -149,12 +157,12 @@ class PGAgent(nn.Module):
             # In other words: Q(s_t, a_t) = sum_{t'=0}^T gamma^t' r_{t'}
             # TODO: use the helper function self._discounted_return to calculate the Q-values
 
-            q_values = None
+            q_values = [self._discounted_return(reward) for reward in rewards]
         else:
             # Case 2: in reward-to-go PG, we only use the rewards after timestep t to estimate the Q-value for (s_t, a_t).
             # In other words: Q(s_t, a_t) = sum_{t'=t}^T gamma^(t'-t) * r_{t'}
             # TODO: use the helper function self._discounted_reward_to_go to calculate the Q-values
-            q_values = None
+            q_values = [self._discounted_reward_to_go(reward) for reward in rewards]
 
         return q_values
 
@@ -175,7 +183,7 @@ class PGAgent(nn.Module):
         else:
             # TODO: run the critic and use it as a baseline
             obs = ptu.from_numpy(obs)
-            values = self.critic(obs).squeeze()
+            values = self.critic(obs).squeeze() # squeeze() 하는걸까?
 
             if self.gae_lambda is None:
                 # TODO: if using a baseline, but not GAE, what are the advantages?
@@ -196,7 +204,8 @@ class PGAgent(nn.Module):
                     # TODO: recursively compute advantage estimates starting from timestep T.
                     # HINT: use terminals to handle edge cases. terminals[i] is 1 if there isn't a next state in its
                     # trajectory, and 0 otherwise.
-                    pass
+                    delta_t = rewards[i] + self.gamma * (1 - terminals[i]) * values[i + 1] - values[i]
+                    advantages[i] = delta_t + self.gamma * self.gae_lambda * advantages[i + 1] * (1 - terminals[i])
 
                 # remove dummy advantage
                 advantages = advantages[:-1]
