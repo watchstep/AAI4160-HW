@@ -77,7 +77,7 @@ class MLPPolicy(nn.Module):
             # TODO: define the forward pass for a policy with a continuous action space.
             # HINT: use torch.distributions.Normal to define the distribution.
             mu = self.mean_net(obs)
-            std = torch.diag(torch.exp(self.logstd))
+            std = torch.exp(self.logstd)
             dist = distributions.Normal(mu, std)
 
         return dist
@@ -106,15 +106,18 @@ class MLPPolicyPG(MLPPolicy):
         advantages = ptu.from_numpy(advantages)
         
         # 헷갈
+        self.optimizer.zero_grad()
         dist = self.forward(obs)
-        log_probs = dist.log_prob(actions)
+        if self.discrete:
+            log_probs = dist.log_prob(actions)
+        else:
+            log_probs = dist.log_prob(actions).sum(dim=-1)
         # TODO: implement the policy gradient actor update.
         # HINT: don't forget to do `self.optimizer.step()`!
         # mean? sum?? 
         loss = -torch.mean(log_probs*advantages)
         
         # gradient descent
-        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 

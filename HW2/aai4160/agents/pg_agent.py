@@ -102,10 +102,12 @@ class PGAgent(nn.Module):
 
             # TODO: update the PG actor/policy network once using the advantages
             info: dict = self.actor.update(obs, actions, advantages)
-
+            
             if self.critic is not None:
                 # TODO: update the critic for `baseline_gradient_steps` times
-                critic_info: dict = self.critic.update(obs, q_values)
+                critic_info: dict = {}
+                for _ in range(self.baseline_gradient_steps):
+                    critic_info.update(self.critic.update(obs, q_values))
 
                 info.update(critic_info)
         else:
@@ -141,7 +143,9 @@ class PGAgent(nn.Module):
 
             assert self.critic is not None, "PPO requires a critic for calculating GAE."
             # TODO: update the critic for `baseline_gradient_steps` times
-            critic_info: dict = self.critic.update(obs, q_values)
+            critic_info: dict = {}
+            for _ in range(self.baseline_gradient_steps):
+                critic_info.update(self.critic.update(obs, q_values))
 
             info.update(critic_info)
         return info
@@ -183,11 +187,11 @@ class PGAgent(nn.Module):
         else:
             # TODO: run the critic and use it as a baseline
             obs = ptu.from_numpy(obs)
-            values = self.critic(obs).squeeze() # squeeze() 하는걸까?
+            values = ptu.to_numpy(self.critic(obs).squeeze()) # squeeze() 왜? 쓸데없는 차원이 붙어서 나와서 그럼
 
             if self.gae_lambda is None:
                 # TODO: if using a baseline, but not GAE, what are the advantages?
-                advantages = self._discounted_reward_to_go(rewards) - values
+                advantages = q_values - values
             else:
                 # TODO: implement GAE
                 batch_size = obs.shape[0]
