@@ -148,9 +148,18 @@ class MLPPolicyPG(MLPPolicy):
         # HINT: calculate logp first, and then caculate ratio and clipped loss.
         # HINT: ratio is the exponential of the difference between logp and old_logp.
         # HINT: You can use torch.clamp to clip values.
-        dist = self(obs)
-        logp = dist.log_prob(actions)
-        ratio = torch.exp(torch.sub(logp, old_logp)) # 그냥 빼기를 할까?
-        loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - ppo_cliprange, 1 + ppo_cliprange) * advantages)
+        self.optimizer.zero_grad()
+        dist = self.forward(obs)
+        if self.discrete:
+            logp = dist.log_prob(actions)
+        else:
+            logp = dist.log_prob(actions).sum(dim=-1)
+            
+        ratio = torch.exp(logp - old_logp) # 그냥 빼기를 할까?
+        loss = - torch.mean(torch.min(ratio * advantages, torch.clamp(ratio, 1 - ppo_cliprange, 1 + ppo_cliprange) * advantages))
+        # loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - ppo_cliprange, 1 + ppo_cliprange) * advantages)
+        
+        loss.backward()
+        self.optimizer.step()
 
         return {"PPO Loss": ptu.to_numpy(loss)}

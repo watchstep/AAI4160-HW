@@ -139,7 +139,7 @@ class PGAgent(nn.Module):
 
                     # TODO: update the PG actor/policy with PPO objective
                     # HINT: call self.actor.ppo_update
-                    info: dict = self.actor.ppo_update(obs_slice, actions_slice, advantages_slice)
+                    info: dict = self.actor.ppo_update(obs_slice, actions_slice, advantages_slice, logp_slice)
 
             assert self.critic is not None, "PPO requires a critic for calculating GAE."
             # TODO: update the critic for `baseline_gradient_steps` times
@@ -187,11 +187,11 @@ class PGAgent(nn.Module):
         else:
             # TODO: run the critic and use it as a baseline
             obs = ptu.from_numpy(obs)
-            values = ptu.to_numpy(self.critic(obs).squeeze()) # squeeze() 왜? 쓸데없는 차원이 붙어서 나와서 그럼
+            values = ptu.to_numpy(self.critic(obs).squeeze()) # squeeze() 왜?
 
             if self.gae_lambda is None:
                 # TODO: if using a baseline, but not GAE, what are the advantages?
-                advantages = q_values - values
+                advantages = self._discounted_reward_to_go(rewards) - values
             else:
                 # TODO: implement GAE
                 batch_size = obs.shape[0]
@@ -293,9 +293,13 @@ class PGAgent(nn.Module):
         # TODO: calculate the log probabilities
         # HINT: self.actor outputs a distribution object, which has a method log_prob that takes in the actions
         obs = ptu.from_numpy(obs)
-        actions = ptu.from_numpy(obs)
-        dist = self(actions)
-        logp = dist.log_prob(dist)
-
+        actions = ptu.from_numpy(actions)
+        dist = self.actor(obs)
+        if self.actor.discrete:
+            logp = dist.log_prob(actions)
+        else:
+            logp = dist.log_prob(actions).sum(dim=-1)
+            
+        logp = ptu.to_numpy(logp)
         assert logp.ndim == 1 and logp.shape[0] == obs.shape[0]
         return logp
