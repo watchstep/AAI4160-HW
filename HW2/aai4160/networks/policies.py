@@ -56,7 +56,9 @@ class MLPPolicy(nn.Module):
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         """Takes a single observation (as a numpy array) and returns a single action (as a numpy array)."""
         # TODO: implement get_action
-        action = None
+        obs = ptu.from_numpy(obs) # 넘파이에서 텐서로 변환
+        dist = self.forward(obs)
+        action = ptu.to_numpy(dist.sample()) # discrete한 상황만 고려하면 되나? rsample()
 
         return action
 
@@ -69,11 +71,14 @@ class MLPPolicy(nn.Module):
         if self.discrete:
             # TODO: define the forward pass for a policy with a discrete action space.
             # HINT: use torch.distributions.Categorical to define the distribution.
-            dist = None
+            logits = self.logits_net(obs)
+            dist = distributions.Categorical(F.softmax(logits))
         else:
             # TODO: define the forward pass for a policy with a continuous action space.
             # HINT: use torch.distributions.Normal to define the distribution.
-            dist = None
+            mu = self.mean_net(obs)
+            std = torch.exp(self.logstd)
+            dist = distributions.Normal(mu, std)
 
         return dist
 
@@ -99,10 +104,22 @@ class MLPPolicyPG(MLPPolicy):
         obs = ptu.from_numpy(obs)
         actions = ptu.from_numpy(actions)
         advantages = ptu.from_numpy(advantages)
-
+        
+        # 헷갈
+        self.optimizer.zero_grad()
+        dist = self.forward(obs)
+        if self.discrete:
+            log_probs = dist.log_prob(actions)
+        else:
+            log_probs = dist.log_prob(actions).sum(dim=-1)
         # TODO: implement the policy gradient actor update.
         # HINT: don't forget to do `self.optimizer.step()`!
-        loss = None
+        # mean? sum?? 
+        loss = -torch.mean(log_probs*advantages)
+        
+        # gradient descent
+        loss.backward()
+        self.optimizer.step()
 
         return {
             "Actor Loss": ptu.to_numpy(loss),
@@ -131,6 +148,18 @@ class MLPPolicyPG(MLPPolicy):
         # HINT: calculate logp first, and then caculate ratio and clipped loss.
         # HINT: ratio is the exponential of the difference between logp and old_logp.
         # HINT: You can use torch.clamp to clip values.
-        loss = None
+        self.optimizer.zero_grad()
+        dist = self.forward(obs)
+        if self.discrete:
+            logp = dist.log_prob(actions)
+        else:
+            logp = dist.log_prob(actions).sum(dim=-1)
+            
+        ratio = torch.exp(logp - old_logp) # 그냥 빼기를 할까?
+        loss = - torch.mean(torch.min(ratio * advantages, torch.clamp(ratio, 1 - ppo_cliprange, 1 + ppo_cliprange) * advantages))
+        # loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - ppo_cliprange, 1 + ppo_cliprange) * advantages)
+        
+        loss.backward()
+        self.optimizer.step()
 
         return {"PPO Loss": ptu.to_numpy(loss)}
