@@ -47,7 +47,15 @@ class DQNAgent(nn.Module):
         observation = ptu.from_numpy(np.asarray(observation))[None]
 
         # TODO(student): get the action from the critic using an epsilon-greedy strategy
-        action = ...
+        observation = ptu.from_numpy(observation)
+        q_values = self.critic(observation)
+        p = np.random.random()
+        # https://stackoverflow.com/questions/47231852/np-random-rand-vs-np-random-random
+        if p < epsilon:
+            action = 
+        
+        
+        
 
         return ptu.to_numpy(action).squeeze(0).item()
 
