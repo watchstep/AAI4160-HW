@@ -87,11 +87,12 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
         epsilon = exploration_schedule.value(step)
 
         # TODO(student): Compute action from observation
-        action = ...
+        action = agent.get_action(observation, epsilon=epsilon)
 
         # TODO(student): Step the environment
-        ...
-
+        # next_observation, reward, done, info
+        next_observation, reward, terminated, truncated, info = env.step(action)
+        
         next_observation = np.asarray(next_observation)
 
         # TODO(student): Add the data to the replay buffer
@@ -99,10 +100,22 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
             # We're using the memory-efficient replay buffer,
             # so we only insert the latest frame of `next_observation`
             # please refer to L82 and `insert` function of MemoryEfficientReplayBuffer
-            ...
+            next_observation = np.asarray(next_observation)
+            replay_buffer.insert(
+                action=action,
+                reward=reward,
+                next_observation=next_observation[-1],
+                done=terminated
+            )
         else:
             # We're using the regular replay buffer
-            ...
+            replay_buffer.insert(
+                observation=observation,
+                action=action,
+                reward=reward,
+                next_observation=next_observation,
+                done=terminated
+            )
 
         # Handle episode termination
         if terminated or truncated:
@@ -116,13 +129,18 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
         # Main DQN training loop
         if step >= config["learning_starts"]:
             # TODO(student): Sample config["batch_size"] samples from the replay buffer
-            batch = ...
+            batch = replay_buffer.sample(config["batch_size"])
 
             # Convert to PyTorch tensors
             batch = ptu.from_numpy(batch)
 
             # TODO(student): Train the agent using `update` method. `batch` is a dictionary of torch tensors.
-            update_info = ...
+            update_info = agent.update(batch["observations"], 
+                                       batch["actions"], 
+                                       batch["rewards"], 
+                                       batch["next_observations"], 
+                                       batch["dones"], 
+                                       step)
 
             # Logging code
             update_info["epsilon"] = epsilon
