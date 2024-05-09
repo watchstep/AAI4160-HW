@@ -100,7 +100,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
             # We're using the memory-efficient replay buffer,
             # so we only insert the latest frame of `next_observation`
             # please refer to L82 and `insert` function of MemoryEfficientReplayBuffer
-            next_observation = np.asarray(next_observation)
+            # 그냥 terminated만 넣어도 되는건가??
             replay_buffer.insert(
                 action=action,
                 reward=reward,

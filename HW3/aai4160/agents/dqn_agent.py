@@ -54,7 +54,7 @@ class DQNAgent(nn.Module):
         else:
             qa_values = self.critic(observation)
             action = qa_values.argmax(dim=-1)
-
+            
         return ptu.to_numpy(action).squeeze(0).item()
 
     def update_critic(
@@ -74,30 +74,31 @@ class DQNAgent(nn.Module):
 
             # HINT: first, compute q(s',a') values for all actions with the target network
             # (we will later find the maximum values among all possible actions)
-            next_qa_values = self.critic(next_obs)
+            next_qa_values = self.target_critic(next_obs)
 
             if self.use_double_q:
                 # HINT: find the best action by evaluting q(s',a') with the current critic
-                next_action = self.critic(next_obs, )
+                next_qa_values = self.critic(next_obs)
+                next_action = next_qa_values.argmax(dim=-1)
             else:
                 # HINT: find the next action to choose (hint: argmax) among `next_qa_values`
-                next_action = self.critic(next_obs).argmax(dim=1, keepdim=True)
-
+                next_action = next_qa_values.argmax(dim=-1)
+        
             # HINT: find the next q values among `next_qa_values` by specifying with `next_action`
-            next_q_values = torch.gather(next_qa_values, -1, next_action)
-
+            next_q_values = torch.gather(next_qa_values, -1, next_action.unsqueeze(-1)).squeeze(-1)
+            
             # HINT: finally, compute the target values with the `next_q_values`
-            # TD target self.discount (gamma) 
-            target_values = reward + self.discount * (1 - done) * next_q_values.max(-1, keepdim=True).values
-
+            # TD target self.discount (gamma) next_q_values.max(-1, keepdim=True).values
+            target_values = reward + self.discount * (1 - done.float()) * next_q_values
+        
         # TODO(student): train the critic with the target values
 
         # HINT: find the q(s,a) values for all actions with the critic network
         qa_values = self.critic(obs)
-
+        
         # HINT: find the q values among `qa_values` by specifying with `action`
         # HINT: compute from the data actions; see torch.gather
-        q_values = torch.gather(qa_values, -1, action[:, None, None].repeat(1, q.shape[1], 1))
+        q_values = torch.gather(qa_values, -1, action.unsqueeze(-1)).squeeze(-1)
 
         assert q_values.shape == target_values.shape
 
@@ -139,7 +140,8 @@ class DQNAgent(nn.Module):
         # TODO(student): update the critic, and the target if needed
         # HINT #1: update target network every `self.target_update_period` step
         # HINT #2: use `self.update_target_critic` to update target network
-        for _ in self.target_update_period:
-            critic_stats = self.update_target_critic(obs, action, reward, next_obs, done)
+        critic_stats = self.update_critic(obs, action, reward, next_obs, done)
+        if step % self.target_update_period == 0:
+            self.update_target_critic()
 
         return critic_stats

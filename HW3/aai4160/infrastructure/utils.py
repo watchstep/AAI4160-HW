@@ -40,7 +40,6 @@ def sample_trajectory(
         # HINT: set `epsilon` to 0
         # Replace the line below
         ac = policy.get_action(ob, epsilon=0)
-        # ac = ac[0]
         
 
         # TODO(student): take that action and get reward and next ob
