@@ -50,7 +50,8 @@ def sample_trajectory(
         # done = terminated or truncated
 
         steps += 1
-        terminated = 1 if (terminated or steps >= max_length) else 0
+        # 질문 steps가 max_length 넘어가나?
+        # terminated = 1 if (terminated or steps >= max_length) else 0
 
         # record result of taking that action
         obs.append(ob)
