@@ -61,7 +61,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
             action = env.action_space.sample()
         else:
             # TODO(student): Select an action
-            action = ...
+            action = agent.get_action(observation=observation)
 
         # step the environment and add the data to the replay buffer
         next_observation, reward, done, truncated, info = env.step(action)
@@ -84,13 +84,18 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
         if step >= config["training_starts"]:
             # TODO(student): Sample a batch of config["batch_size"] transitions from the replay buffer
             # Please refer to aai4160/infrastructure/replay_buffer.py
-            batch = ...
+            batch = replay_buffer.sample(config["batch_size"])
 
             # convert to PyTorch tensors
             batch = ptu.from_numpy(batch)
 
-            # TODO(student): Train the agent using `update` method. `batch` is a dictionary of torch tensors.
-            update_info = ...
+            # TODO(student): Train the agent using `update` method. `batch` is a dictionary of torch tensors
+            update_info = agent.update(batch["observations"],
+                                       batch["actions"],
+                                       batch["rewards"],
+                                       batch["next_observations"],
+                                       batch["dones"],
+                                       step)
 
             # logging
             update_info["actor_lr"] = agent.actor_lr_scheduler.get_last_lr()[0]
