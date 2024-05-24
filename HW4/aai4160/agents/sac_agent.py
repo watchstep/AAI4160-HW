@@ -150,9 +150,9 @@ class SoftActorCritic(nn.Module):
         # TODO(student): Implement the different backup strategies.
         if self.target_critic_backup_type == "doubleq":
             # swap next_qs
-            next_qs = next_qs[[1, 0]]
+            next_qs[[0, 1]] = next_qs[[1, 0]] 
         elif self.target_critic_backup_type == "min":
-            next_qs = next_qs.min(dim=0).values()
+            next_qs = torch.minimum(next_qs[0, :], next_qs[1, :])
         else:
             # Default, we don't need to do anything.
             pass
@@ -204,9 +204,8 @@ class SoftActorCritic(nn.Module):
             if self.use_entropy_bonus and self.backup_entropy:
                 # TODO(student): Add entropy bonus to the target values for SAC
                 # NOTE: use `self.entropy()`
-                print('호', next_action)
-                next_action_entropy = self.entropy(next_action)
-                next_qs += next_action_entropy
+                next_action_entropy = self.entropy(action_distribution=next_action_distribution)
+                next_qs += self.temperature * next_action_entropy
 
             # TODO(student): Compute the target Q-value
             # HINT: implement Equation (1) in Homework 4
@@ -217,7 +216,7 @@ class SoftActorCritic(nn.Module):
             )
 
         # TODO(student): Predict Q-values using `self.critic`
-        q_values = self.critic(obs)
+        q_values = self.critic(obs, action)
         assert q_values.shape == (self.num_critic_networks, batch_size), q_values.shape
 
         # TODO(student): Compute loss using `self.critic_loss`
@@ -243,8 +242,7 @@ class SoftActorCritic(nn.Module):
         # HINT: different to Homework 2, we use tanh_transformed distribution
         # in SAC, so log_prob does not need sum over the last dimension
         # NOTE: think about whether to use .rsample() or .sample() here
-        print("확인")
-        action = action_distribution.sample()
+        action = action_distribution.rsample() #여기서 rsample 왜
         entropy = -action_distribution.log_prob(action)
 
         assert entropy.shape == action.shape[:-1]
@@ -258,7 +256,7 @@ class SoftActorCritic(nn.Module):
 
         with torch.no_grad():
             # TODO(student): Draw num_actor_samples samples from the action distribution for each batch element
-            action = [action_distribution.sample() for _ in range(self.num_actor_samples)]
+            action = action_distribution.sample((self.num_actor_samples,))
             assert action.shape == (
                 self.num_actor_samples,
                 batch_size,
@@ -268,7 +266,7 @@ class SoftActorCritic(nn.Module):
             # TODO(student): Compute Q-values for the current state-action pair
             # HINT: need to add one dimension with `self.num_actor_samples` at the beginning of `obs`
             # HINT: for this, you can use either `repeat` or `expand`
-            q_values = self.critic(obs.unsequeeze().repeat(self.num_actor_samples, 1, 1), action)
+            q_values = self.critic(obs.repeat(self.num_actor_samples, 1, 1), action)
             assert q_values.shape == (
                 self.num_critic_networks,
                 self.num_actor_samples,
@@ -284,7 +282,8 @@ class SoftActorCritic(nn.Module):
         assert log_probs.shape == q_values.shape
 
         # TODO(student): Compute policy gradient using log-probs and Q-values
-        loss = self.critic_loss(log_probs, q_values)
+        # q_values = advantage
+        loss = -torch.mean(q_values*log_probs)
 
         return loss, torch.mean(self.entropy(action_distribution))
     
@@ -303,7 +302,7 @@ class SoftActorCritic(nn.Module):
         q_values = self.critic(obs, action)
 
         # TODO(student): Compute the actor loss using Q-values
-        loss = -torch.mean(action_distribution.log_prob(action)*q_values)
+        loss = -torch.mean(q_values)
 
         return loss, torch.mean(self.entropy(action_distribution))
 
@@ -360,7 +359,6 @@ class SoftActorCritic(nn.Module):
 
         # TODO(student): Update the actor
         actor_info = self.update_actor(observations)
-        print(actor_info)
 
         # TODO(student): Perform either hard or soft target updates.
         # Relevant variables:
@@ -370,13 +368,12 @@ class SoftActorCritic(nn.Module):
         # For hard target updates, you should do it every self.target_update_period step
         # For soft target updates, you should do it every step
         # HINT: use `self.update_target_critic` or `self.soft_update_target_critic`
-        if self.target_update_period is None:
+        if self.soft_target_update_rate:
+            self.soft_update_target_critic()
+        else:
             if not step % self.target_update_period:
                 self.update_target_critic()
-        else:
-            self.soft_update_target_critic()
-
-
+                
         # Average the critic info over all of the steps
         critic_info = {
             k: np.mean([info[k] for info in critic_infos]) for k in critic_infos[0]

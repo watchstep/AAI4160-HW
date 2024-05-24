@@ -90,12 +90,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
             batch = ptu.from_numpy(batch)
 
             # TODO(student): Train the agent using `update` method. `batch` is a dictionary of torch tensors
-            update_info = agent.update(batch["observations"],
-                                       batch["actions"],
-                                       batch["rewards"],
-                                       batch["next_observations"],
-                                       batch["dones"],
-                                       step)
+            update_info = agent.update(**batch, step=step)
 
             # logging
             update_info["actor_lr"] = agent.actor_lr_scheduler.get_last_lr()[0]
