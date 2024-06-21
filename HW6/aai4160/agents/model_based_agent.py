@@ -238,6 +238,7 @@ class ModelBasedAgent(nn.Module):
                 # TODO(student): implement the CEM algorithm
                 # HINT 1: For getting the top-k indices, you can use np.argpartition function.
                 ### STUDENT CODE BEGIN HERE ###
+                rewards = self.evaluate_action_sequences(obs, action_sequences)
                 top_k_indices = np.argpartition(rewards, -self.cem_num_elites)[-self.cem_num_elites:]
                 ### STUDENT CODE END HERE ###
                 
@@ -251,7 +252,7 @@ class ModelBasedAgent(nn.Module):
                     elite_std = elite_action_sequences.std(0)
                 else:
                     elite_mean = self.cem_alpha * elite_action_sequences.mean(0) + (1 - self.cem_alpha) * elite_mean
-                    elite_std = self.cem_alpha * elite_action_sequences.std(0) + 1 - self.cem_alpha) * elite_std
+                    elite_std = self.cem_alpha * elite_action_sequences.std(0) + (1 - self.cem_alpha) * elite_std
                 action_sequences = np.random.normal(elite_mean, elite_std, 
                                                                  size=(self.mpc_num_action_sequences, self.mpc_horizon, self.ac_dim))
                 ### STUDENT CODE END HERE ###

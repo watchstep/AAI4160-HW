@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from tqdm import tqdm
 import numpy as np
 import copy
 import gymnasium as gym
