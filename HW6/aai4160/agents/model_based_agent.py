@@ -96,8 +96,8 @@ class ModelBasedAgent(nn.Module):
         # Note that the model recieves normalized observation-action for its input.
         # Optimize the model with squared loss.
         ### STUDENT CODE BEGIN HERE ###
-        obs_delta_normalized_hat = ...
-        loss = ...
+        obs_delta_normalized_hat = self.dynamics_models[i](obs_acs_normalized)
+        loss = self.loss_fn(obs_delta_normalized, obs_delta_normalized_hat)
         ### STUDENT CODE END HERE ###
 
         self.optimizer.zero_grad()
@@ -149,7 +149,7 @@ class ModelBasedAgent(nn.Module):
         # TODO(student): get the model's predicted `next_obs`
         # HINT: use self.dynamics_models[i] to get the delta prediction for next obs.
         ### STUDENT CODE BEGIN HERE ###
-        obs_delta_normalized = ...
+        obs_delta_normalized = self.dynamics_models[i](obs_acs_normalized)
         ### STUDENT CODE END HERE ###
 
         obs_delta = obs_delta_normalized * self.obs_delta_std + self.obs_delta_mean
@@ -191,7 +191,7 @@ class ModelBasedAgent(nn.Module):
             # TODO(student): predict the next_obs for each rollout
             # HINT: use self.get_dynamics_predictions
             ### STUDENT CODE BEGIN HERE ###
-            next_obs = ...
+            next_obs = np.array([self.get_dynamics_predictions(i, obs[i], acs) for i in range(self.ensemble_size)])
             ### STUDENT CODE END HERE ###
 
             assert next_obs.shape == (
@@ -238,15 +238,22 @@ class ModelBasedAgent(nn.Module):
                 # TODO(student): implement the CEM algorithm
                 # HINT 1: For getting the top-k indices, you can use np.argpartition function.
                 ### STUDENT CODE BEGIN HERE ###
-                top_k_indices = ...
+                top_k_indices = np.argpartition(rewards, -self.cem_num_elites)[-self.cem_num_elites:]
                 ### STUDENT CODE END HERE ###
-
+                
                 elite_action_sequences = action_sequences[top_k_indices]
 
                 # HINT 2: Generate action sequence with the mean and standard deviation of the elite sequences.
                 # Note that we use diagnoal gaussian distribution, not with full covariance.
                 ### STUDENT CODE BEGIN HERE ###
-                action_sequences = ...
+                if i == 0:
+                    elite_mean = elite_action_sequences.mean(0)
+                    elite_std = elite_action_sequences.std(0)
+                else:
+                    elite_mean = self.cem_alpha * elite_action_sequences.mean(0) + (1 - self.cem_alpha) * elite_mean
+                    elite_std = self.cem_alpha * elite_action_sequences.std(0) + 1 - self.cem_alpha) * elite_std
+                action_sequences = np.random.normal(elite_mean, elite_std, 
+                                                                 size=(self.mpc_num_action_sequences, self.mpc_horizon, self.ac_dim))
                 ### STUDENT CODE END HERE ###
 
                 # Clip the action sequence to valid range
